@@ -3,7 +3,7 @@
 let celebrationMp3 = null;
 
 function loadSupportingScripts() {
-    const scripts = ['3.js'];
+    const scripts = ['mp4.js'];
 
     return Promise.all(scripts.map(src => new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
