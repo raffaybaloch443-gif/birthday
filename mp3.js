@@ -139,7 +139,7 @@ function triggerCelebration() {
 function getMp3Source() {
     if (config.celebrationMedia?.type === 'mp3' && config.celebrationMedia.src) return config.celebrationMedia.src;
     if (config.mp3Audio) return config.mp3Audio;
-    return 'audio/birthday.mp3';
+    return 'audio/mp3.mp3';
 }
 
 function initializeMp3Audio() {
