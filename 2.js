@@ -1,10 +1,31 @@
 // ===== MAIN PAGE INITIALIZATION & EVENT HANDLERS =====
 
+function loadSupportingScripts() {
+    const scripts = ['3.js', '4.js', '5.js'];
+
+    return Promise.all(scripts.map(src => new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Unable to load ${src}`));
+        document.body.appendChild(script);
+    })));
+}
+
 function initializeBirthdayWebsite() {
     initializeContent();
     setupEventListeners();
     startAutoSlide();
     setupScrollAnimations();
+
+    if (typeof setupSliderTouchControls === 'function') setupSliderTouchControls();
+    if (typeof initializeVisualEffects === 'function') initializeVisualEffects();
+    if (typeof initializeCelebrationAudio === 'function') initializeCelebrationAudio();
 }
 
 function initializeContent() {
@@ -103,7 +124,6 @@ function triggerCelebration() {
         celebrationSection.style.animation = 'pulse 1s ease-out';
     }
 
-    // Play the customer-selected audio configured in 5.js.
     playCelebrationAudio();
 
     setTimeout(() => {
@@ -113,7 +133,10 @@ function triggerCelebration() {
 }
 
 function addDynamicAnimations() {
+    if (document.getElementById('birthdayAnimationStyle')) return;
+
     const style = document.createElement('style');
+    style.id = 'birthdayAnimationStyle';
     style.textContent = `
         @keyframes fadeOut {
             from { opacity: 1; }
@@ -128,9 +151,7 @@ function setupSmoothScrollBehavior() {
         anchor.addEventListener('click', function (event) {
             event.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
 }
@@ -221,9 +242,18 @@ function initializePageFeatures() {
     setupAccessibility();
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    initializeBirthdayWebsite();
+function startApplication() {
     initializePageFeatures();
-});
 
-console.log('Birthday website loaded and ready!');
+    loadSupportingScripts()
+        .then(() => initializeBirthdayWebsite())
+        .catch(error => console.error('Birthday website modules failed to load:', error));
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApplication);
+} else {
+    startApplication();
+}
+
+console.log('Birthday website main module loaded.');
