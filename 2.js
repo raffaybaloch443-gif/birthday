@@ -1,7 +1,9 @@
 // ===== MAIN PAGE INITIALIZATION & EVENT HANDLERS =====
 
+let celebrationMp3 = null;
+
 function loadSupportingScripts() {
-    const scripts = ['3.js', '4.js', '5.js'];
+    const scripts = ['3.js'];
 
     return Promise.all(scripts.map(src => new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
@@ -24,8 +26,8 @@ function initializeBirthdayWebsite() {
     setupScrollAnimations();
 
     if (typeof setupSliderTouchControls === 'function') setupSliderTouchControls();
-    if (typeof initializeVisualEffects === 'function') initializeVisualEffects();
-    if (typeof initializeCelebrationAudio === 'function') initializeCelebrationAudio();
+    if (typeof initializeMp4Audio === 'function') initializeMp4Audio();
+    initializeMp3Audio();
 }
 
 function initializeContent() {
@@ -124,7 +126,7 @@ function triggerCelebration() {
         celebrationSection.style.animation = 'pulse 1s ease-out';
     }
 
-    playCelebrationAudio();
+    playConfiguredCelebrationMedia();
 
     setTimeout(() => {
         const footer = document.querySelector('.footer');
@@ -132,6 +134,72 @@ function triggerCelebration() {
     }, 500);
 }
 
+// ===== MP3 AUDIO SYSTEM =====
+function getMp3Source() {
+    if (config.celebrationMedia?.type === 'mp3' && config.celebrationMedia.src) {
+        return config.celebrationMedia.src;
+    }
+
+    if (config.mp3Audio) return config.mp3Audio;
+
+    return 'audio/birthday.mp3';
+}
+
+function initializeMp3Audio() {
+    const src = getMp3Source();
+    if (!src) return;
+
+    if (!celebrationMp3) {
+        celebrationMp3 = document.createElement('audio');
+        celebrationMp3.id = 'birthdayMp3Audio';
+        celebrationMp3.preload = 'auto';
+        celebrationMp3.style.display = 'none';
+        document.body.appendChild(celebrationMp3);
+    }
+
+    celebrationMp3.src = src;
+    celebrationMp3.loop = Boolean(config.celebrationMedia?.loop);
+    celebrationMp3.volume = Math.min(1, Math.max(0, Number(config.celebrationMedia?.volume ?? 1)));
+    celebrationMp3.load();
+}
+
+function playMp3Audio() {
+    initializeMp3Audio();
+    if (!celebrationMp3) return;
+
+    celebrationMp3.currentTime = 0;
+    celebrationMp3.play().catch(error => {
+        console.warn('MP3 audio could not be played:', error);
+    });
+}
+
+function stopMp3Audio() {
+    if (!celebrationMp3) return;
+    celebrationMp3.pause();
+    celebrationMp3.currentTime = 0;
+}
+
+function playConfiguredCelebrationMedia() {
+    const mediaType = config.celebrationMedia?.type || 'mp3';
+
+    if (mediaType === 'mp4' && typeof window.playMp4Audio === 'function') {
+        stopMp3Audio();
+        window.playMp4Audio();
+        return;
+    }
+
+    if (typeof window.stopMp4Audio === 'function') {
+        window.stopMp4Audio();
+    }
+
+    playMp3Audio();
+}
+
+window.playMp3Audio = playMp3Audio;
+window.stopMp3Audio = stopMp3Audio;
+window.playConfiguredCelebrationMedia = playConfiguredCelebrationMedia;
+
+// ===== VISUAL EFFECTS =====
 function addDynamicAnimations() {
     if (document.getElementById('birthdayAnimationStyle')) return;
 
@@ -199,7 +267,8 @@ function throttle(func, limit) {
 function updateBirthdayConfig(newConfig) {
     Object.assign(config, newConfig);
     initializeContent();
-    if (typeof initializeCelebrationAudio === 'function') initializeCelebrationAudio();
+    initializeMp3Audio();
+    if (typeof initializeMp4Audio === 'function') initializeMp4Audio();
 }
 
 function setBirthdayName(name) {
