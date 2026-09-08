@@ -1,17 +1,34 @@
-// ===== CELEBRATION AUDIO =====
+// ===== CELEBRATION AUDIO MODULE =====
+// Supports local files, direct URLs and multiple browser audio formats.
 
 let celebrationAudio = null;
 let celebrationAudioObjectUrl = null;
 
+function getDefaultAudioConfig() {
+    return {
+        // Put your local audio files inside an /audio folder and use these paths.
+        // You can keep one source or add multiple fallback formats.
+        sources: [
+            { src: 'audio/celebration.mp3', type: 'audio/mpeg' },
+            { src: 'audio/celebration.wav', type: 'audio/wav' },
+            { src: 'audio/celebration.ogg', type: 'audio/ogg' },
+            { src: 'audio/celebration.m4a', type: 'audio/mp4' },
+            { src: 'audio/celebration.aac', type: 'audio/aac' }
+        ],
+        volume: 1,
+        loop: false
+    };
+}
+
 function getAudioConfig() {
-    const audioConfig = config.audio || {};
+    if (!config.audio) {
+        config.audio = getDefaultAudioConfig();
+    }
 
     return {
-        url: audioConfig.url || '',
-        file: audioConfig.file || '',
-        type: audioConfig.type || '',
-        volume: typeof audioConfig.volume === 'number' ? audioConfig.volume : 1,
-        loop: Boolean(audioConfig.loop)
+        sources: Array.isArray(config.audio.sources) ? config.audio.sources : [],
+        volume: typeof config.audio.volume === 'number' ? config.audio.volume : 1,
+        loop: Boolean(config.audio.loop)
     };
 }
 
@@ -22,6 +39,7 @@ function createCelebrationAudio() {
     celebrationAudio.id = 'celebrationAudio';
     celebrationAudio.preload = 'auto';
     celebrationAudio.controls = false;
+    celebrationAudio.setAttribute('aria-hidden', 'true');
     document.body.appendChild(celebrationAudio);
 
     return celebrationAudio;
@@ -37,13 +55,13 @@ function clearCelebrationAudioSources() {
     }
 }
 
-function addAudioSource(src, type = '') {
+function addAudioSource(src, mimeType = '') {
     if (!src) return;
 
     const audio = createCelebrationAudio();
     const source = document.createElement('source');
     source.src = src;
-    if (type) source.type = type;
+    if (mimeType) source.type = mimeType;
     audio.appendChild(source);
 }
 
@@ -53,13 +71,16 @@ function initializeCelebrationAudio() {
 
     clearCelebrationAudioSources();
 
-    if (audioConfig.url) {
-        addAudioSource(audioConfig.url, audioConfig.type);
-    }
+    audioConfig.sources.forEach(source => {
+        if (typeof source === 'string') {
+            addAudioSource(source);
+            return;
+        }
 
-    if (audioConfig.file) {
-        addAudioSource(audioConfig.file, audioConfig.type);
-    }
+        if (source && source.src) {
+            addAudioSource(source.src, source.type || '');
+        }
+    });
 
     audio.volume = Math.min(1, Math.max(0, audioConfig.volume));
     audio.loop = audioConfig.loop;
@@ -89,13 +110,10 @@ function stopCelebrationAudio() {
     celebrationAudio.currentTime = 0;
 }
 
-function setCelebrationAudioUrl(url, mimeType = '') {
+function setCelebrationAudioUrl(url, mimeType = 'audio/mpeg') {
     if (!config.audio) config.audio = {};
 
-    config.audio.url = url;
-    config.audio.file = '';
-    config.audio.type = mimeType;
-
+    config.audio.sources = url ? [{ src: url, type: mimeType }] : [];
     initializeCelebrationAudio();
 }
 
@@ -112,29 +130,53 @@ function setCelebrationAudioFile(file) {
     celebrationAudioObjectUrl = URL.createObjectURL(file);
 
     if (!config.audio) config.audio = {};
-    config.audio.url = '';
-    config.audio.file = celebrationAudioObjectUrl;
-    config.audio.type = file.type || '';
+    config.audio.sources = [{
+        src: celebrationAudioObjectUrl,
+        type: file.type || ''
+    }];
 
     initializeCelebrationAudio();
 }
 
 function setCelebrationAudioSources(sources = []) {
+    if (!config.audio) config.audio = {};
+
+    config.audio.sources = sources.map(source => {
+        if (typeof source === 'string') return { src: source, type: '' };
+        return {
+            src: source?.src || '',
+            type: source?.type || ''
+        };
+    }).filter(source => source.src);
+
+    initializeCelebrationAudio();
+}
+
+function setCelebrationAudioVolume(volume) {
+    const safeVolume = Math.min(1, Math.max(0, Number(volume) || 0));
+
+    if (!config.audio) config.audio = {};
+    config.audio.volume = safeVolume;
+
     const audio = createCelebrationAudio();
+    audio.volume = safeVolume;
+}
+
+function setCelebrationAudioLoop(loop) {
+    if (!config.audio) config.audio = {};
+    config.audio.loop = Boolean(loop);
+
+    const audio = createCelebrationAudio();
+    audio.loop = config.audio.loop;
+}
+
+function clearCelebrationAudio() {
     clearCelebrationAudioSources();
 
-    sources.forEach(sourceData => {
-        if (typeof sourceData === 'string') {
-            addAudioSource(sourceData);
-            return;
-        }
-
-        if (sourceData && sourceData.src) {
-            addAudioSource(sourceData.src, sourceData.type || '');
-        }
-    });
-
-    audio.load();
+    if (celebrationAudioObjectUrl) {
+        URL.revokeObjectURL(celebrationAudioObjectUrl);
+        celebrationAudioObjectUrl = null;
+    }
 }
 
 window.playCelebrationAudio = playCelebrationAudio;
@@ -143,8 +185,6 @@ window.stopCelebrationAudio = stopCelebrationAudio;
 window.setCelebrationAudioUrl = setCelebrationAudioUrl;
 window.setCelebrationAudioFile = setCelebrationAudioFile;
 window.setCelebrationAudioSources = setCelebrationAudioSources;
-
-// Browser-friendly audio formats can be configured independently.
-// Examples: audio/mpeg (MP3), audio/wav (WAV), audio/ogg (OGG),
-// audio/mp4 (M4A/MP4 where supported), audio/aac (AAC where supported).
-document.addEventListener('DOMContentLoaded', initializeCelebrationAudio);
+window.setCelebrationAudioVolume = setCelebrationAudioVolume;
+window.setCelebrationAudioLoop = setCelebrationAudioLoop;
+window.clearCelebrationAudio = clearCelebrationAudio;
