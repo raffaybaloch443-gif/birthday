@@ -69,7 +69,7 @@ function setupSliderTouchControls() {
 function getMp4Source() {
     if (config.celebrationMedia?.type === 'mp4' && config.celebrationMedia.src) return config.celebrationMedia.src;
     if (config.mp4Audio) return config.mp4Audio;
-    return 'audio/birthday.mp4';
+    return 'audio/mp4.mp4';
 }
 
 function initializeMp4Audio() {
